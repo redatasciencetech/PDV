@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Conveniência - PDV & Gestão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col font-sans text-gray-800">
+
+    <!-- Cabeçalho Principal -->
+    <header class="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-500 p-2 rounded-lg text-slate-900 font-bold">
+                <i class="fa-solid fa-wine-bottle text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold leading-tight">Conveniência Express</h1>
+                <p class="text-xs text-gray-400">Sistema PDV & Gestão de Estoque</p>
+            </div>
+        </div>
+
+        <!-- Navegação por Abas -->
+        <nav class="flex gap-2 bg-slate-800 p-1 rounded-xl">
+            <button onclick="switchTab('pdv')" id="tab-btn-pdv" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold transition-all bg-amber-500 text-slate-900 shadow">
+                <i class="fa-solid fa-cash-register mr-1"></i> Frente de Caixa (PDV)
+            </button>
+            <button onclick="switchTab('produtos')" id="tab-btn-produtos" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white">
+                <i class="fa-solid fa-boxes-stacked mr-1"></i> Produtos & Estoque
+            </button>
+            <button onclick="switchTab('historico')" id="tab-btn-historico" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white">
+                <i class="fa-solid fa-receipt mr-1"></i> Histórico de Vendas
+            </button>
+            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white">
+                <i class="fa-solid fa-chart-line mr-1"></i> Dashboard
+            </button>
+        </nav>
+
+        <div class="flex items-center gap-3 text-sm">
+            <span class="bg-emerald-600 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span> Caixa Aberto
+            </span>
+            <span id="clock" class="text-gray-300 font-mono text-xs">00:00:00</span>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal SPA -->
+    <main class="flex-1 p-4 overflow-hidden relative">
+
+        <!-- TAB 1: PDV (Frente de Caixa) -->
+        <div id="tab-pdv" class="tab-content h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Painel Esquerdo: Busca e Produtos -->
+            <section class="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="mb-3">
+                    <div class="relative">
+                        <input type="text" id="search-input" onkeyup="handleSearch(event)" placeholder="Bipe o código de barras ou digite o nome e pressione Enter..." autofocus 
+                            class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none text-gray-800 font-medium text-sm">
+                        <i class="fa-solid fa-barcode absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                    </div>
+                </div>
+
+                <!-- Categorias Rápidas -->
+                <div id="category-pills" class="flex gap-2 mb-3 overflow-x-auto pb-1">
+                    <!-- Gerado via JS -->
+                </div>
+
+                <!-- Grid de Produtos -->
+                <div id="product-grid" class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 pr-1">
+                    <!-- Gerado via JS -->
+                </div>
+            </section>
+
+            <!-- Painel Direito: Carrinho e Checkout -->
+            <section class="lg:col-span-5 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-2">
+                    <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-cart-shopping text-amber-500"></i> Carrinho Atual
+                    </h2>
+                    <button onclick="clearCart()" class="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i> Limpar
+                    </button>
+                </div>
+
+                <!-- Tabela/Lista do Carrinho -->
+                <div id="cart-list" class="flex-1 overflow-y-auto divide-y divide-gray-100 pr-1">
+                    <!-- Renderizado dinamicamente -->
+                </div>
+
+                <!-- Resumo e Forma de Pagamento -->
+                <div class="border-t border-gray-200 pt-3 mt-2 bg-gray-50 -mx-4 -mb-4 p-4 rounded-b-xl space-y-3">
+                    
+                    <!-- Subtotal e Desconto -->
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Subtotal:</span>
+                            <span id="cart-subtotal" class="font-bold text-gray-800">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>Desconto (R$):</span>
+                            <input type="number" id="discount-input" onchange="renderCart()" value="0" min="0" step="0.50" 
+                                class="w-20 px-2 py-0.5 text-right border border-gray-300 rounded bg-white font-bold text-gray-800 text-xs">
+                        </div>
+                    </div>
+
+                    <!-- Total Final -->
+                    <div class="flex justify-between items-end border-t border-gray-200 pt-2">
+                        <span class="text-xs font-extrabold text-gray-600 uppercase">Total a Pagar:</span>
+                        <span id="cart-total" class="text-3xl font-black text-slate-900">R$ 0,00</span>
+                    </div>
+
+                    <!-- Seleção de Pagamento -->
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Forma de Pagamento</p>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button onclick="selectPayment('PIX', this)" class="payment-btn active bg-emerald-600 text-white border border-emerald-600 py-2 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
+                                <i class="fa-brands fa-pix text-sm"></i> Pix
+                            </button>
+                            <button onclick="selectPayment('Dinheiro', this)" class="payment-btn bg-white text-gray-700 border border-gray-300 py-2 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
+                                <i class="fa-solid fa-money-bill-wave text-sm"></i> Dinheiro
+                            </button>
+                            <button onclick="selectPayment('Crédito', this)" class="payment-btn bg-white text-gray-700 border border-gray-300 py-2 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
+                                <i class="fa-solid fa-credit-card text-sm"></i> Crédito
+                            </button>
+                            <button onclick="selectPayment('Débito', this)" class="payment-btn bg-white text-gray-700 border border-gray-300 py-2 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
+                                <i class="fa-solid fa-credit-card text-sm"></i> Débito
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cálculo de Troco (Visível apenas em Dinheiro) -->
+                    <div id="cash-calculator" class="hidden bg-amber-50 p-2.5 rounded-lg border border-amber-200 space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-semibold text-amber-900">Valor Recebido:</span>
+                            <input type="number" id="cash-paid-input" onkeyup="calculateChange()" placeholder="0,00" step="0.50" 
+                                class="w-24 px-2 py-1 text-right border border-amber-300 rounded font-bold text-gray-900 bg-white">
+                        </div>
+                        <div class="flex justify-between text-xs font-bold text-amber-900">
+                            <span>Troco:</span>
+                            <span id="cash-change-val">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <!-- Botão Finalizar -->
+                    <button onclick="checkout()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition-all text-center flex items-center justify-center gap-2 text-base">
+                        <i class="fa-solid fa-circle-check"></i> Finalizar Venda
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: Produtos e Estoque -->
+        <div id="tab-produtos" class="tab-content hidden h-full bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800">Cadastro & Controle de Estoque</h2>
+                <button onclick="openProductModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Novo Produto
+                </button>
+            </div>
+
+            <!-- Tabela de Produtos -->
+            <div class="flex-1 overflow-y-auto">
+                <table class="w-full text-left text-xs text-gray-600">
+                    <thead class="bg-gray-100 text-gray-700 uppercase sticky top-0">
+                        <tr>
+                            <th class="p-3">Código</th>
+                            <th class="p-3">Produto</th>
+                            <th class="p-3">Categoria</th>
+                            <th class="p-3">P. Custo</th>
+                            <th class="p-3">P. Venda</th>
+                            <th class="p-3">Estoque</th>
+                            <th class="p-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-table-body" class="divide-y divide-gray-100">
+                        <!-- Gerado via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: Histórico de Vendas -->
+        <div id="tab-historico" class="tab-content hidden h-full bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Histórico de Transações</h2>
+            <div class="flex-1 overflow-y-auto">
+                <table class="w-full text-left text-xs text-gray-600">
+                    <thead class="bg-gray-100 text-gray-700 uppercase sticky top-0">
+                        <tr>
+                            <th class="p-3">ID Venda</th>
+                            <th class="p-3">Data/Hora</th>
+                            <th class="p-3">Forma Pagto</th>
+                            <th class="p-3">Total</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3 text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-table-body" class="divide-y divide-gray-100">
+                        <!-- Gerado via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 4: Dashboard -->
+        <div id="tab-dashboard" class="tab-content hidden h-full overflow-y-auto space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="text-xs text-gray-400 font-bold uppercase">Faturamento Hoje</span>
+                    <h3 id="dash-total-hoje" class="text-2xl font-black text-emerald-600 mt-1">R$ 0,00</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="text-xs text-gray-400 font-bold uppercase">Vendas Realizadas</span>
+                    <h3 id="dash-qtd-vendas" class="text-2xl font-black text-slate-800 mt-1">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="text-xs text-gray-400 font-bold uppercase">Ticket Médio</span>
+                    <h3 id="dash-ticket-medio" class="text-2xl font-black text-amber-600 mt-1">R$ 0,00</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <span class="text-xs text-gray-400 font-bold uppercase">Alertas Estoque Baixo</span>
+                    <h3 id="dash-estoque-baixo" class="text-2xl font-black text-red-500 mt-1">0</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 class="font-bold text-sm text-gray-800 mb-3">Vendas por Forma de Pagamento</h4>
+                    <div id="dash-pagamentos-list" class="space-y-2 text-xs"></div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 class="font-bold text-sm text-gray-800 mb-3">Top 5 Bebidas Mais Vendidas</h4>
+                    <div id="dash-top-produtos-list" class="space-y-2 text-xs"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Cadastro de Produto -->
+    <div id="product-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-gray-800">Cadastrar Novo Produto</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="saveProduct(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold mb-1 text-gray-700">Código de Barras</label>
+                    <input type="text" id="prod-barcode" required class="w-full p-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1 text-gray-700">Nome do Produto</label>
+                    <input type="text" id="prod-name" required class="w-full p-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1 text-gray-700">Categoria</label>
+                    <select id="prod-category" class="w-full p-2 border border-gray-300 rounded-lg"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold mb-1 text-gray-700">Preço Custo (R$)</label>
+                        <input type="number" id="prod-cost" step="0.01" value="0.00" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1 text-gray-700">Preço Venda (R$)</label>
+                        <input type="number" id="prod-price" step="0.01" required class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold mb-1 text-gray-700">Estoque Inicial</label>
+                        <input type="number" id="prod-stock" value="10" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1 text-gray-700">Estoque Mínimo</label>
+                        <input type="number" id="prod-min-stock" value="5" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeProductModal()" class="w-full py-2 bg-gray-200 text-gray-700 font-bold rounded-lg">Cancelar</button>
+                    <button type="submit" class="w-full py-2 bg-emerald-600 text-white font-bold rounded-lg">Salvar Produto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Principal -->
+    <script>
+        let productsList = [];
+        let categoriesList = [];
+        let cart = [];
+        let selectedPayment = 'PIX';
+        let selectedCategoryFilter = null;
+
+        // Relógio digital
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR');
+        }, 1000);
+
+        // Troca de Abas
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white';
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.className = 'tab-btn active px-4 py-2 rounded-lg text-xs font-bold transition-all bg-amber-500 text-slate-900 shadow';
+
+            if (tabName === 'produtos') loadProductsTable();
+            if (tabName === 'historico') loadSalesHistory();
+            if (tabName === 'dashboard') loadDashboard();
+            if (tabName === 'pdv') setTimeout(() => document.getElementById('search-input').focus(), 100);
+        }
+
+        // Carregar dados iniciais
+        async function loadInitialData() {
+            await loadCategories();
+            await loadProducts();
+        }
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/categorias');
+                categoriesList = await res.json();
+                renderCategoryPills();
+                populateCategorySelect();
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/produtos');
+                productsList = await res.json();
+                renderProductGrid();
+            } catch (err) { console.error(err); }
+        }
+
+        function renderCategoryPills() {
+            const pillsContainer = document.getElementById('category-pills');
+            pillsContainer.innerHTML = `
+                <button onclick="filterCategory(null)" class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${selectedCategoryFilter === null ? 'bg-amber-500 text-slate-900' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">Todos</button>
+            ` + categoriesList.map(c => `
+                <button onclick="filterCategory(${c.id})" class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${selectedCategoryFilter === c.id ? 'bg-amber-500 text-slate-900' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${c.nome}</button>
+            `).join('');
+        }
+
+        function filterCategory(catId) {
+            selectedCategoryFilter = catId;
+            renderCategoryPills();
+            renderProductGrid();
+        }
+
+        function renderProductGrid(filterText = '') {
+            const grid = document.getElementById('product-grid');
+            let filtered = productsList;
+
+            if (selectedCategoryFilter) {
+                filtered = filtered.filter(p => p.categoria_id === selectedCategoryFilter);
+            }
+            if (filterText) {
+                const term = filterText.toLowerCase();
+                filtered = filtered.filter(p => p.nome.toLowerCase().includes(term) || p.codigo_barras.includes(term));
+            }
+
+            grid.innerHTML = filtered.map(p => `
+                <button onclick="addToCart(${p.id})" class="bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-400 p-3 rounded-xl flex flex-col justify-between text-left transition-all group relative">
+                    <div>
+                        <span class="text-[10px] font-semibold text-gray-400 group-hover:text-amber-600">COD: ${p.codigo_barras}</span>
+                        <h3 class="font-bold text-gray-800 text-xs mt-0.5 line-clamp-2">${p.nome}</h3>
+                    </div>
+                    <div class="mt-2 flex justify-between items-center w-full">
+                        <span class="text-[11px] ${p.estoque_atual <= p.estoque_minimo ? 'text-red-600 font-bold' : 'text-gray-500'}">Est: ${p.estoque_atual}</span>
+                        <span class="text-sm font-black text-emerald-600">R$ ${p.preco_venda.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </button>
+            `).join('');
+        }
+
+        function handleSearch(event) {
+            const val = event.target.value.strip ? event.target.value.strip() : event.target.value.trim();
+            if (event.key === 'Enter' && val !== '') {
+                const exactMatch = productsList.find(p => p.codigo_barras === val || p.nome.toLowerCase() === val.toLowerCase());
+                if (exactMatch) {
+                    addToCart(exactMatch.id);
+                    event.target.value = '';
+                    renderProductGrid();
+                } else {
+                    renderProductGrid(val);
+                }
+            } else {
+                renderProductGrid(val);
+            }
+        }
+
+        function addToCart(productId) {
+            const product = productsList.find(p => p.id === productId);
+            if (!product) return;
+
+            const existing = cart.find(i => i.id === productId);
+            if (existing) {
+                if (existing.qty < product.estoque_atual) {
+                    existing.qty += 1;
+                } else {
+                    alert('Quantidade excede o estoque disponível!');
+                }
+            } else {
+                if (product.estoque_atual > 0) {
+                    cart.push({ id: product.id, name: product.nome, price: product.preco_venda, qty: 1 });
+                } else {
+                    alert('Produto sem estoque disponível!');
+                }
+            }
+            renderCart();
+        }
+
+        function updateQty(index, change) {
+            const item = cart[index];
+            const product = productsList.find(p => p.id === item.id);
+
+            if (change > 0 && item.qty >= product.estoque_atual) {
+                alert('Limite de estoque atingido!');
+                return;
+            }
+
+            item.qty += change;
+            if (item.qty <= 0) cart.splice(index, 1);
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            document.getElementById('discount-input').value = 0;
+            renderCart();
+        }
+
+        function selectPayment(method, btnElement) {
+            selectedPayment = method;
+            document.querySelectorAll('.payment-btn').forEach(btn => {
+                btn.className = 'payment-btn bg-white text-gray-700 border border-gray-300 py-2 rounded-lg text-xs font-bold flex flex-col items-center gap-1';
+            });
+            btnElement.className = 'payment-btn active bg-emerald-600 text-white border border-emerald-600 py-2 rounded-lg text-xs font-bold flex flex-col items-center gap-1 shadow-sm';
+
+            const cashCalc = document.getElementById('cash-calculator');
+            if (method === 'Dinheiro') {
+                cashCalc.classList.remove('hidden');
+                calculateChange();
+            } else {
+                cashCalc.classList.add('hidden');
+            }
+        }
+
+        function calculateChange() {
+            const total = calculateTotal();
+            const paid = parseFloat(document.getElementById('cash-paid-input').value) || 0;
+            const change = paid - total;
+            document.getElementById('cash-change-val').innerText = `R$ ${Math.max(0, change).toFixed(2).replace('.', ',')}`;
+        }
+
+        function calculateSubtotal() {
+            return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        }
+
+        function calculateTotal() {
+            const subtotal = calculateSubtotal();
+            const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+            return Math.max(0, subtotal - discount);
+        }
+
+        function renderCart() {
+            const cartList = document.getElementById('cart-list');
+            if (cart.length === 0) {
+                cartList.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fa-solid fa-basket-shopping text-3xl mb-1"></i>
+                        <p class="text-xs">Carrinho vazio</p>
+                    </div>`;
+                document.getElementById('cart-subtotal').innerText = 'R$ 0,00';
+                document.getElementById('cart-total').innerText = 'R$ 0,00';
+                return;
+            }
+
+            cartList.innerHTML = cart.map((item, index) => `
+                <div class="py-2.5 flex justify-between items-center text-xs">
+                    <div class="flex-1 pr-2">
+                        <h4 class="font-bold text-gray-800">${item.name}</h4>
+                        <span class="text-[10px] text-gray-500">R$ ${item.price.toFixed(2).replace('.', ',')} un</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="updateQty(${index}, -1)" class="w-5 h-5 rounded bg-gray-200 hover:bg-gray-300 font-bold flex items-center justify-center">-</button>
+                        <span class="font-bold text-gray-800 w-4 text-center">${item.qty}</span>
+                        <button onclick="updateQty(${index}, 1)" class="w-5 h-5 rounded bg-gray-200 hover:bg-gray-300 font-bold flex items-center justify-center">+</button>
+                        <span class="font-bold text-gray-800 min-w-[50px] text-right">R$ ${(item.price * item.qty).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            const subtotal = calculateSubtotal();
+            const total = calculateTotal();
+
+            document.getElementById('cart-subtotal').innerText = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+            document.getElementById('cart-total').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            calculateChange();
+        }
+
+        async function checkout() {
+            if (cart.length === 0) {
+                alert('Adicione ao menos um produto no carrinho!');
+                return;
+            }
+
+            const subtotal = calculateSubtotal();
+            const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+            const total = calculateTotal();
+            const paid = parseFloat(document.getElementById('cash-paid-input').value) || total;
+            const change = selectedPayment === 'Dinheiro' ? Math.max(0, paid - total) : 0;
+
+            try {
+                const res = await fetch('/api/vendas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: cart,
+                        subtotal: subtotal,
+                        desconto: discount,
+                        total: total,
+                        valor_pago: paid,
+                        troco: change,
+                        forma_pagamento: selectedPayment
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Venda #${data.venda_id} finalizada com sucesso!`);
+                    clearCart();
+                    await loadProducts();
+                    document.getElementById('search-input').focus();
+                } else {
+                    alert(`Erro: ${data.error}`);
+                }
+            } catch (err) {
+                alert('Erro na comunicação com o servidor.');
+            }
+        }
+
+        // Tabela de Produtos & Estoque
+        function loadProductsTable() {
+            const tbody = document.getElementById('products-table-body');
+            tbody.innerHTML = productsList.map(p => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="p-3 font-mono font-bold text-gray-500">${p.codigo_barras}</td>
+                    <td class="p-3 font-bold text-gray-800">${p.nome}</td>
+                    <td class="p-3"><span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-semibold">${p.categoria_nome || 'Sem Categoria'}</span></td>
+                    <td class="p-3">R$ ${(p.preco_custo || 0).toFixed(2).replace('.', ',')}</td>
+                    <td class="p-3 font-bold text-emerald-600">R$ ${p.preco_venda.toFixed(2).replace('.', ',')}</td>
+                    <td class="p-3 font-bold ${p.estoque_atual <= p.estoque_minimo ? 'text-red-600' : 'text-gray-800'}">
+                        ${p.estoque_atual} ${p.estoque_atual <= p.estoque_minimo ? '<span class="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded ml-1">Baixo</span>' : ''}
+                    </td>
+                    <td class="p-3 text-right">
+                        <button onclick="deleteProduct(${p.id})" class="text-red-500 hover:text-red-700 font-bold text-xs"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function populateCategorySelect() {
+            const select = document.getElementById('prod-category');
+            select.innerHTML = categoriesList.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+        }
+
+        function openProductModal() { document.getElementById('product-modal').classList.remove('hidden'); }
+        function closeProductModal() { document.getElementById('product-modal').classList.add('hidden'); }
+
+        async function saveProduct(e) {
+            e.preventDefault();
+            const payload = {
+                codigo_barras: document.getElementById('prod-barcode').value,
+                nome: document.getElementById('prod-name').value,
+                categoria_id: parseInt(document.getElementById('prod-category').value),
+                preco_custo: parseFloat(document.getElementById('prod-cost').value),
+                preco_venda: parseFloat(document.getElementById('prod-price').value),
+                estoque_atual: parseInt(document.getElementById('prod-stock').value),
+                estoque_minimo: parseInt(document.getElementById('prod-min-stock').value)
+            };
+
+            const res = await fetch('/api/produtos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                closeProductModal();
+                await loadProducts();
+                loadProductsTable();
+            } else {
+                const err = await res.json();
+                alert(`Erro: ${err.error}`);
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Deseja realmente excluir este produto?')) return;
+            const res = await fetch(`/api/produtos/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                await loadProducts();
+                loadProductsTable();
+            } else {
+                const err = await res.json();
+                alert(err.error);
+            }
+        }
+
+        // Histórico de Vendas
+        async function loadSalesHistory() {
+            const res = await fetch('/api/vendas');
+            const sales = await res.json();
+            const tbody = document.getElementById('sales-table-body');
+
+            tbody.innerHTML = sales.map(s => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="p-3 font-bold text-gray-800">#${s.id}</td>
+                    <td class="p-3 text-gray-500">${new Date(s.data_hora).toLocaleString('pt-BR')}</td>
+                    <td class="p-3"><span class="bg-gray-100 px-2 py-0.5 rounded font-bold text-[10px]">${s.forma_pagamento}</span></td>
+                    <td class="p-3 font-black text-gray-800">R$ ${s.total.toFixed(2).replace('.', ',')}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.status === 'CONCLUIDA' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                            ${s.status}
+                        </span>
+                    </td>
+                    <td class="p-3 text-right">
+                        ${s.status === 'CONCLUIDA' ? `<button onclick="cancelSale(${s.id})" class="text-xs text-red-500 hover:text-red-700 font-bold"><i class="fa-solid fa-ban"></i> Cancelar</button>` : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function cancelSale(saleId) {
+            if (!confirm(`Tem certeza que deseja CANCELAR a venda #${saleId}? Os produtos serão estornados de volta ao estoque.`)) return;
+            
+            const res = await fetch(`/api/vendas/${saleId}/cancelar`, { method: 'POST' });
+            if (res.ok) {
+                alert('Venda cancelada e estoque recomposto!');
+                await loadProducts();
+                loadSalesHistory();
+            } else {
+                const err = await res.json();
+                alert(err.error);
+            }
+        }
+
+        // Dashboard Financeiro
+        async function loadDashboard() {
+            const res = await fetch('/api/dashboard');
+            const data = await res.json();
+
+            document.getElementById('dash-total-hoje').innerText = `R$ ${data.total_hoje.toFixed(2).replace('.', ',')}`;
+            document.getElementById('dash-qtd-vendas').innerText = data.qtd_vendas_hoje;
+            document.getElementById('dash-ticket-medio').innerText = `R$ ${data.ticket_medio.toFixed(2).replace('.', ',')}`;
+            document.getElementById('dash-estoque-baixo').innerText = data.estoque_baixo_count;
+
+            const pagContainer = document.getElementById('dash-pagamentos-list');
+            pagContainer.innerHTML = data.pagamentos.length ? data.pagamentos.map(p => `
+                <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                    <span class="font-bold text-gray-700">${p.forma_pagamento}</span>
+                    <span class="font-black text-emerald-600">R$ ${p.total.toFixed(2).replace('.', ',')}</span>
+                </div>
+            `).join('') : '<p class="text-gray-400">Nenhuma venda registrada hoje.</p>';
+
+            const topContainer = document.getElementById('dash-top-produtos-list');
+            topContainer.innerHTML = data.top_produtos.length ? data.top_produtos.map(tp => `
+                <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                    <span class="font-bold text-gray-700">${tp.nome} (${tp.total_vendido} un)</span>
+                    <span class="font-black text-gray-900">R$ ${tp.faturamento.toFixed(2).replace('.', ',')}</span>
+                </div>
+            `).join('') : '<p class="text-gray-400">Nenhum dado acumulado.</p>';
+        }
+
+        // Inicializar aplicação
+        loadInitialData();
+    </script>
+</body>
+</html>
