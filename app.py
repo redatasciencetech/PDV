@@ -319,5 +319,7 @@ def get_dashboard():
 
 if __name__ == '__main__':
     init_db()
-    print("Servidor rodando em http://127.0.0.1:5000")
-    app.run(debug=True, port=5000)
+    # Pega a porta configurada pelo Render (ou usa 5000 se rodar localmente)
+    port = int(os.environ.get('PORT', 5000))
+    # host='0.0.0.0' permite que a nuvem direcione o tráfego para a aplicação
+    app.run(host='0.0.0.0', port=port)
